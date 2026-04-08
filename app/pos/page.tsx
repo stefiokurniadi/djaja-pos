@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { useSession } from "next-auth/react";
 import { t } from "@/lib/i18n";
 import { MobileUserMenu } from "@/components/MobileUserMenu";
+import Image from "next/image";
 
 type CreatedTx = {
   id: string;
@@ -386,8 +387,9 @@ export default function PosPage() {
 
       {doneTx ? (
         <Modal
-          title="Transaction completed"
+          title="Payment Success"
           onClose={() => setDoneTx(null)}
+          hideClose
           actions={
             <button
               className="w-full rounded-xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white"
@@ -398,6 +400,28 @@ export default function PosPage() {
             </button>
           }
         >
+          <div className="flex flex-col items-center text-center">
+            <Image
+              src="/brand/success-check.png"
+              alt="Success"
+              width={96}
+              height={96}
+              priority
+              className="h-20 w-20"
+            />
+            <Image
+              src="/brand/logo.png"
+              alt="DjajaPOS"
+              width={260}
+              height={80}
+              priority
+              className="mt-2 h-12 w-auto"
+            />
+            <div className="mt-2 text-base font-semibold text-neutral-900">
+              Payment Success
+            </div>
+          </div>
+
           <div className="text-sm text-neutral-600">
             Payment:{" "}
             <span className="font-semibold text-neutral-900">
@@ -455,25 +479,29 @@ function Modal({
   title,
   children,
   actions,
-  onClose
+  onClose,
+  hideClose
 }: {
   title: string;
   children: React.ReactNode;
   actions: React.ReactNode;
   onClose: () => void;
+  hideClose?: boolean;
 }) {
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-3 md:items-center">
       <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl">
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm font-semibold">{title}</div>
-          <button
-            className="rounded-xl border border-neutral-200 px-3 py-2 text-sm font-semibold"
-            style={{ minHeight: 44 }}
-            onClick={onClose}
-          >
-            Close
-          </button>
+          {!hideClose ? (
+            <button
+              className="rounded-xl border border-neutral-200 px-3 py-2 text-sm font-semibold"
+              style={{ minHeight: 44 }}
+              onClick={onClose}
+            >
+              Close
+            </button>
+          ) : null}
         </div>
         <div className="mt-3">{children}</div>
         <div className="mt-4 flex gap-2">{actions}</div>
