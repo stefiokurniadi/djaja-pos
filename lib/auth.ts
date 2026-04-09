@@ -1,11 +1,12 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/db";
+import { nextAuthSecureCookie } from "@/lib/next-auth-cookie";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  secret: process.env.NEXTAUTH_SECRET,
+  useSecureCookies: nextAuthSecureCookie(),
   session: { strategy: "jwt" },
   pages: {
     signIn: "/signin"

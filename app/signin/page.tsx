@@ -18,12 +18,17 @@ export default function SignInPage() {
     setError(null);
     try {
       const res = await signIn("credentials", {
-        email,
+        email: email.trim().toLowerCase(),
         password,
+        callbackUrl: "/pos",
         redirect: false
       });
       if (!res?.ok) {
-        setError("Login failed. Check your email and password.");
+        const detail =
+          res?.error && res.error !== "CredentialsSignin"
+            ? ` (${res.error})`
+            : "";
+        setError(`Login failed. Check your email and password.${detail}`);
         return;
       }
       window.location.href = "/pos";
