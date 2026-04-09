@@ -633,6 +633,8 @@ function BranchRow({
   onChanged: () => Promise<void>;
 }) {
   const toast = useToast();
+  const { data: session } = useSession();
+  const locale = session?.user?.locale;
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState(branch.name);
