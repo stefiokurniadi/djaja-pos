@@ -390,6 +390,8 @@ function UserCard({
 }) {
   const toast = useToast();
   const qc = useQueryClient();
+  const { data: session } = useSession();
+  const locale = session?.user?.locale;
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
