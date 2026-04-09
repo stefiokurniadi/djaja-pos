@@ -11,7 +11,8 @@ import { t } from "@/lib/i18n";
 const navItems = [
   { href: "/pos", labelKey: "nav.cashier" as const },
   { href: "/menu", labelKey: "nav.menu" as const },
-  { href: "/dashboard", labelKey: "nav.dashboard" as const }
+  { href: "/dashboard", labelKey: "nav.dashboard" as const },
+  { href: "/transactions", labelKey: "nav.transactions" as const }
 ];
 
 export function Sidebar() {
@@ -51,7 +52,10 @@ export function Sidebar() {
       </div>
 
       <nav className="mt-4 space-y-1">
-        {(isCashier ? navItems.filter((n) => n.href !== "/menu") : navItems).map((it) => {
+        {(isCashier
+          ? navItems.filter((n) => n.href !== "/menu" && n.href !== "/transactions")
+          : navItems
+        ).map((it) => {
           const active = pathname === it.href;
           return (
             <Link
@@ -61,7 +65,7 @@ export function Sidebar() {
                 "flex items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold",
                 "min-h-[44px]",
                 active
-                  ? "bg-neutral-900 text-white"
+                  ? "bg-[#469d98] text-white"
                   : "text-neutral-700 hover:bg-neutral-50"
               )}
             >

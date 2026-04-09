@@ -11,6 +11,17 @@ function parseDateParam(v: string | null) {
 
 type Row = { date: string; revenue: number };
 
+function toYMDUTC(d: Date) {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function startOfDayUTC(d: Date) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
 export async function GET(req: Request) {
   try {
     const session = await requireSession();
@@ -35,20 +46,33 @@ export async function GET(req: Request) {
     // IMPORTANT: must be company-scoped to avoid cross-tenant data leaks.
     const rows = await prisma.$queryRaw<Row[]>`
       SELECT
-        to_char(date_trunc('day', "createdAt"), 'YYYY-MM-DD') as "date",
-        COALESCE(SUM("total"), 0)::float8 as "revenue"
+        to_char(date_trunc('day', "Transaction"."createdAt"), 'YYYY-MM-DD') as "date",
+        COALESCE(SUM("Transaction"."total"), 0)::float8 as "revenue"
       FROM "Transaction"
       JOIN "Branch" ON "Branch"."id" = "Transaction"."branchId"
       WHERE "status" = 'COMPLETED'
         AND "Branch"."companyId" = ${session.user.companyId}
         AND (${branchId ? Prisma.sql`"branchId" = ${branchId}` : Prisma.sql`TRUE`})
-        AND (${from ? Prisma.sql`"createdAt" >= ${from}` : Prisma.sql`TRUE`})
-        AND (${to ? Prisma.sql`"createdAt" <= ${to}` : Prisma.sql`TRUE`})
+        AND (${from ? Prisma.sql`"Transaction"."createdAt" >= ${from}` : Prisma.sql`TRUE`})
+        AND (${to ? Prisma.sql`"Transaction"."createdAt" <= ${to}` : Prisma.sql`TRUE`})
       GROUP BY 1
       ORDER BY 1 ASC
     `;
 
-    return Response.json({ points: rows });
+    if (!from || !to) return Response.json({ points: rows });
+
+    // Ensure the X-axis is complete (all dates in range), filling missing days with 0 revenue.
+    const start = startOfDayUTC(from);
+    const end = startOfDayUTC(to);
+    const byDate = new Map(rows.map((r) => [r.date, r.revenue]));
+    const points: Row[] = [];
+
+    for (let cur = start; cur.getTime() <= end.getTime(); cur = new Date(cur.getTime() + 86_400_000)) {
+      const date = toYMDUTC(cur);
+      points.push({ date, revenue: byDate.get(date) ?? 0 });
+    }
+
+    return Response.json({ points });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "UNKNOWN";
     if (msg === "UNAUTHORIZED") return jsonError(401, "Unauthorized");

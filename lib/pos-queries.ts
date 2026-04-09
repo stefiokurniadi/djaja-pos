@@ -24,11 +24,14 @@ export function useCategories() {
   });
 }
 
-export function useProducts(branchId?: string | "ALL") {
-  const qs = branchId && branchId !== "ALL" ? `?branchId=${branchId}` : "";
+export function useProducts(branchId?: string) {
+  const qs = branchId ? `?branchId=${branchId}` : "";
   return useQuery({
-    queryKey: ["products", branchId ?? "DEFAULT"],
-    queryFn: () => apiGet<{ products: ProductDTO[] }>(`/api/products${qs}`),
+    queryKey: ["products", branchId ?? "NONE"],
+    queryFn: () => {
+      if (!branchId) return Promise.resolve({ products: [] as ProductDTO[] });
+      return apiGet<{ products: ProductDTO[] }>(`/api/products${qs}`);
+    },
     staleTime: 10_000
   });
 }

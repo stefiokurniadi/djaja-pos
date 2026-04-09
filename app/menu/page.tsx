@@ -12,15 +12,17 @@ import {
 } from "@/lib/menu-mutations";
 import { useToast } from "@/components/Toast";
 import { decimalToNumber, money } from "@/lib/money";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api-client";
 import { useSession } from "next-auth/react";
 import { MobileUserMenu } from "@/components/MobileUserMenu";
+import { t, tFmt } from "@/lib/i18n";
 
 export default function MenuPage() {
   const toast = useToast();
   const { data: session } = useSession();
+  const locale = session?.user?.locale;
 
   const branchesQ = useQuery({
     queryKey: ["branches"],
@@ -29,15 +31,58 @@ export default function MenuPage() {
   });
   const branches = branchesQ.data?.branches ?? [];
 
-  const [activeBranchId, setActiveBranchId] = useState<string | "ALL">("ALL");
-  const effectiveBranchId =
-    session?.user?.role === "CASHIER" ? session?.user?.branchId : activeBranchId;
+  const [activeBranchId, setActiveBranchId] = useState<string>("");
+  const [copyFromBranchId, setCopyFromBranchId] = useState<string>("");
+  const [copySelected, setCopySelected] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (session?.user?.role === "CASHIER") return;
+    if (activeBranchId) return;
+    if (branches.length > 0) setActiveBranchId(branches[0].id);
+  }, [branches, session?.user?.role, activeBranchId]);
+
+  const effectiveBranchId = session?.user?.role === "CASHIER" ? session?.user?.branchId : activeBranchId;
 
   const { data: catData, isLoading: catsLoading } = useCategories();
   const { data: prodData, isLoading: prodsLoading } = useProducts(effectiveBranchId);
 
   const categories = catData?.categories ?? [];
   const products = prodData?.products ?? [];
+
+  const sourceProductsQ = useQuery({
+    queryKey: ["products", "copy-source", copyFromBranchId],
+    queryFn: () =>
+      copyFromBranchId
+        ? apiGet<{ products: any[] }>(`/api/products?branchId=${copyFromBranchId}`)
+        : Promise.resolve({ products: [] as any[] }),
+    enabled: Boolean(copyFromBranchId),
+    staleTime: 10_000
+  });
+  const sourceProducts = (sourceProductsQ.data?.products ?? []) as {
+    id: string;
+    name: string;
+    price: string;
+    costPrice: string;
+    isActive: boolean;
+    sku: string | null;
+  }[];
+
+  const selectedProductIds = useMemo(
+    () => Object.entries(copySelected).filter(([, v]) => v).map(([k]) => k),
+    [copySelected]
+  );
+
+  useEffect(() => {
+    if (!copyFromBranchId) {
+      setCopySelected({});
+      return;
+    }
+    // default select all active items on open
+    const next: Record<string, boolean> = {};
+    for (const p of sourceProducts) next[p.id] = p.isActive;
+    setCopySelected(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [copyFromBranchId, sourceProductsQ.data]);
 
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
@@ -65,22 +110,35 @@ export default function MenuPage() {
   return (
     <AppShell>
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold tracking-tight">Menu</h1>
+        <h1 className="text-xl font-semibold tracking-tight">
+          {t(locale, "nav.menu")}
+        </h1>
         <div className="flex items-center gap-2">
           {session?.user?.role !== "CASHIER" ? (
-            <select
-              className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold"
-              style={{ minHeight: 44 }}
-              value={activeBranchId}
-              onChange={(e) => setActiveBranchId(e.target.value as any)}
-            >
-              <option value="ALL">All branches</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
+            <>
+              <select
+                className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold"
+                style={{ minHeight: 44 }}
+                value={activeBranchId}
+                onChange={(e) => setActiveBranchId(e.target.value)}
+              >
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 disabled:opacity-60"
+                style={{ minHeight: 44 }}
+                disabled={!activeBranchId || branches.length < 2}
+                onClick={() => {
+                  setCopyFromBranchId((prev) => (prev ? "" : branches.find((b) => b.id !== activeBranchId)?.id ?? ""));
+                }}
+              >
+                Copy Menu
+              </button>
+            </>
           ) : (
             <div className="text-xs text-neutral-500">Branch scoped</div>
           )}
@@ -90,8 +148,138 @@ export default function MenuPage() {
         </div>
       </div>
 
+      {session?.user?.role !== "CASHIER" && copyFromBranchId ? (
+        <div className="mt-3 rounded-2xl border border-neutral-200 bg-white p-4">
+          <div className="text-sm font-semibold text-neutral-900">Copy menu from another branch</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <select
+              className="flex-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold"
+              style={{ minHeight: 44, minWidth: 220 }}
+              value={copyFromBranchId}
+              onChange={(e) => setCopyFromBranchId(e.target.value)}
+            >
+              {branches
+                .filter((b) => b.id !== activeBranchId)
+                .map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+            </select>
+            <button
+              className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 disabled:opacity-60"
+              style={{ minHeight: 44 }}
+              disabled={sourceProducts.length === 0}
+              onClick={() => {
+                const next: Record<string, boolean> = {};
+                for (const p of sourceProducts) next[p.id] = true;
+                setCopySelected(next);
+              }}
+            >
+              Select all
+            </button>
+            <button
+              className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 disabled:opacity-60"
+              style={{ minHeight: 44 }}
+              disabled={sourceProducts.length === 0}
+              onClick={() => setCopySelected({})}
+            >
+              Clear
+            </button>
+            <button
+              className="rounded-xl bg-[#469d98] px-4 py-3 text-sm font-semibold text-white hover:bg-[#3f8f8a] disabled:opacity-60"
+              style={{ minHeight: 44 }}
+              disabled={!copyFromBranchId || !activeBranchId || selectedProductIds.length === 0}
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/products/copy", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({
+                      fromBranchId: copyFromBranchId,
+                      toBranchId: activeBranchId,
+                      productIds: selectedProductIds
+                    })
+                  });
+                  const json = await res.json().catch(() => ({}));
+                  if (!res.ok) throw new Error(json?.error || t(locale, "menu.copyFailed"));
+                  toast.push(
+                    tFmt(locale, "menu.copySuccess", {
+                      copied: json.copied,
+                      requested: json.requested,
+                      skipped: json.skipped
+                    })
+                  );
+                } catch (e) {
+                  toast.push(e instanceof Error ? e.message : t(locale, "menu.copyFailed"));
+                } finally {
+                  setCopyFromBranchId("");
+                }
+              }}
+            >
+              Copy into this branch
+            </button>
+            <button
+              className="rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-900"
+              style={{ minHeight: 44 }}
+              onClick={() => setCopyFromBranchId("")}
+            >
+              {t(locale, "common.cancel")}
+            </button>
+          </div>
+          <div className="mt-3 overflow-hidden rounded-2xl border border-neutral-200">
+            <div className="grid grid-cols-[44px_1fr_110px] gap-2 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600">
+              <div />
+              <div>Product</div>
+              <div className="text-right">Price</div>
+            </div>
+            <div className="max-h-72 overflow-auto divide-y divide-neutral-200">
+              {sourceProductsQ.isLoading ? (
+                <div className="p-3 text-sm text-neutral-600">{t(locale, "menu.loading")}</div>
+              ) : sourceProducts.length === 0 ? (
+                <div className="p-3 text-sm text-neutral-600">No products in source branch.</div>
+              ) : (
+                sourceProducts.map((p) => {
+                  const checked = copySelected[p.id] ?? false;
+                  return (
+                    <label
+                      key={p.id}
+                      className="grid cursor-pointer grid-cols-[44px_1fr_110px] items-center gap-2 px-3 py-2 hover:bg-neutral-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) =>
+                          setCopySelected((prev) => ({ ...prev, [p.id]: e.target.checked }))
+                        }
+                      />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-neutral-900">
+                          {p.name}
+                        </div>
+                        <div className="truncate text-xs text-neutral-500">
+                          {p.isActive ? "Active" : "Inactive"}
+                          {p.sku ? ` • SKU: ${p.sku}` : ""}
+                        </div>
+                      </div>
+                      <div className="text-right text-sm font-semibold text-neutral-900">
+                        {money(decimalToNumber(p.price))}
+                      </div>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-neutral-500">
+            Selected: {selectedProductIds.length}. Products with the same SKU (if set) are skipped.
+          </div>
+        </div>
+      ) : null}
+
       {(catsLoading || prodsLoading) && (
-        <p className="mt-2 text-sm text-neutral-600">Loading…</p>
+        <p className="mt-2 text-sm text-neutral-600">{t(locale, "menu.loading")}</p>
       )}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -107,7 +295,7 @@ export default function MenuPage() {
               onChange={(e) => setNewCategoryName(e.target.value)}
             />
             <button
-              className="rounded-xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              className="rounded-xl bg-[#469d98] px-4 py-3 text-sm font-semibold text-white hover:bg-[#3f8f8a] disabled:opacity-60"
               style={{ minHeight: 44 }}
               disabled={createCategory.isPending || newCategoryName.trim().length === 0}
               onClick={async () => {
@@ -225,7 +413,7 @@ export default function MenuPage() {
             />
 
             <button
-              className="rounded-xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              className="rounded-xl bg-[#469d98] px-4 py-3 text-sm font-semibold text-white hover:bg-[#3f8f8a] disabled:opacity-60"
               style={{ minHeight: 44 }}
               disabled={
                 createProduct.isPending ||
@@ -244,7 +432,7 @@ export default function MenuPage() {
                     price: Number(newProduct.price),
                     costPrice: Number(newProduct.costPrice),
                     sku: newProduct.sku.trim() || undefined,
-                    ...(activeBranchId !== "ALL" ? { branchId: activeBranchId } : {})
+                    branchId: effectiveBranchId
                   });
                   setNewProduct({
                     name: "",
@@ -361,7 +549,7 @@ function CategoryRow({
             Cancel
           </button>
           <button
-            className="rounded-xl bg-neutral-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            className="rounded-xl bg-[#469d98] px-3 py-2 text-sm font-semibold text-white hover:bg-[#3f8f8a] disabled:opacity-60"
             style={{ minHeight: 44 }}
             disabled={busy || value.trim().length === 0 || value.trim() === name}
             onClick={async () => {
@@ -516,7 +704,7 @@ function ProductRow({
               Cancel
             </button>
             <button
-              className="rounded-xl bg-neutral-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              className="rounded-xl bg-[#469d98] px-3 py-2 text-sm font-semibold text-white hover:bg-[#3f8f8a] disabled:opacity-60"
               style={{ minHeight: 44 }}
               disabled={busy || n.trim().length === 0}
               onClick={async () => {

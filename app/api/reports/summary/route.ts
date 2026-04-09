@@ -43,7 +43,8 @@ export async function GET(req: Request) {
     const [salesAgg, topItems] = await Promise.all([
       prisma.transaction.aggregate({
         where: whereTx,
-        _sum: { total: true }
+        _sum: { total: true },
+        _count: { _all: true }
       }),
       prisma.transactionItem.groupBy({
         by: ["productName"],
@@ -57,6 +58,7 @@ export async function GET(req: Request) {
     ]);
 
     const totalRevenue = salesAgg._sum.total ?? new Prisma.Decimal(0);
+    const orderCount = salesAgg._count._all ?? 0;
 
     // Compute total COGS from items: sum(unitCost * quantity)
     // Prisma can't aggregate unitCost*quantity directly, so do it in JS from grouped rows.
@@ -75,6 +77,7 @@ export async function GET(req: Request) {
       totalRevenue,
       totalCogs,
       totalProfit,
+      orderCount,
       topItems: topItems.map((t) => ({
         productName: t.productName,
         quantity: t._sum.quantity ?? 0,

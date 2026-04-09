@@ -17,10 +17,12 @@ import {
 import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { MobileUserMenu } from "@/components/MobileUserMenu";
+import { t } from "@/lib/i18n";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
   const isCashier = String(session?.user?.role) === "CASHIER";
+  const locale = session?.user?.locale;
 
   const presets = [
     { id: "today", label: "Today", range: todayRange },
@@ -71,6 +73,7 @@ export default function DashboardPage() {
         totalRevenue: string;
         totalCogs: string;
         totalProfit: string;
+        orderCount: number;
         topItems: { productName: string; quantity: number; revenue: string }[];
       }>(`/api/reports/summary?${qs}`),
     staleTime: 10_000
@@ -88,15 +91,19 @@ export default function DashboardPage() {
   const revenue = data ? Number(data.totalRevenue) : 0;
   const cogs = data ? Number(data.totalCogs) : 0;
   const profit = data ? Number(data.totalProfit) : 0;
+  const orders = data ? Number(data.orderCount ?? 0) : 0;
+  const avgBasket = orders > 0 ? revenue / orders : 0;
 
   return (
     <AppShell>
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
+        <h1 className="text-xl font-semibold tracking-tight">
+          {t(locale, "nav.dashboard")}
+        </h1>
         <div className="flex items-center gap-2">
           <Link
             href="/api/reports/summary/export"
-            className="rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold"
+            className="rounded-xl border border-neutral-200 bg-white/80 px-4 py-2 text-sm font-semibold backdrop-blur hover:bg-white"
             style={{ minHeight: 44 }}
           >
             Export XLSX
@@ -114,7 +121,7 @@ export default function DashboardPage() {
               key={p.id}
               className={`rounded-full border px-3 py-2 text-sm font-semibold ${
                 presetId === p.id
-                  ? "border-neutral-900 bg-neutral-900 text-white"
+                  ? "border-[#469d98] bg-[#469d98] text-white"
                   : "border-neutral-200 bg-white text-neutral-700"
               }`}
               style={{ minHeight: 44 }}
@@ -126,7 +133,7 @@ export default function DashboardPage() {
           <button
             className={`rounded-full border px-3 py-2 text-sm font-semibold ${
               presetId === "custom"
-                ? "border-neutral-900 bg-neutral-900 text-white"
+                ? "border-[#469d98] bg-[#469d98] text-white"
                 : "border-neutral-200 bg-white text-neutral-700"
             }`}
             style={{ minHeight: 44 }}
@@ -182,24 +189,23 @@ export default function DashboardPage() {
           ))}
         </select>
       </div>
-      {isLoading ? (
-        <p className="mt-2 text-sm text-neutral-600">Loading…</p>
-      ) : (
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-neutral-200 p-4">
-            <div className="text-xs text-neutral-500">Total Sales</div>
-            <div className="mt-1 text-lg font-semibold">{money(revenue)}</div>
-          </div>
-          <div className="rounded-2xl border border-neutral-200 p-4">
-            <div className="text-xs text-neutral-500">Total COGS</div>
-            <div className="mt-1 text-lg font-semibold">{money(cogs)}</div>
-          </div>
-          <div className="rounded-2xl border border-neutral-200 p-4">
-            <div className="text-xs text-neutral-500">Total Profit</div>
-            <div className="mt-1 text-lg font-semibold">{money(profit)}</div>
-          </div>
-        </div>
-      )}
+      <div className="mt-4 grid gap-3 md:grid-cols-4">
+        {isLoading ? (
+          <>
+            <StatSkeleton />
+            <StatSkeleton />
+            <StatSkeleton />
+            <StatSkeleton />
+          </>
+        ) : (
+          <>
+            <StatCard label="Sales" value={money(revenue)} />
+            <StatCard label="Orders" value={String(orders)} />
+            <StatCard label="Avg basket" value={money(avgBasket)} />
+            <StatCard label="Profit" value={money(profit)} />
+          </>
+        )}
+      </div>
 
       <div className="mt-6 rounded-2xl border border-neutral-200 p-4">
         <div className="flex items-center justify-between gap-3">
@@ -244,19 +250,44 @@ function SalesBars({ points }: { points: { date: string; revenue: number }[] }) 
           const h = max > 0 ? Math.round((p.revenue / max) * 120) : 0;
           return (
             <div key={p.date} className="flex-1">
-              <div
-                className="w-full rounded-md bg-neutral-900"
-                style={{ height: Math.max(2, h) }}
-                title={`${p.date}: ${p.revenue}`}
-              />
+              {p.revenue > 0 ? (
+                <div
+                  className="w-full rounded-md bg-[#469d98]"
+                  style={{ height: Math.max(2, h) }}
+                  title={`${p.date}: ${p.revenue}`}
+                />
+              ) : (
+                <div className="w-full" style={{ height: 2 }} title={`${p.date}: 0`} />
+              )}
             </div>
           );
         })}
       </div>
-      <div className="mt-2 flex justify-between text-[11px] text-neutral-500">
-        <span>{points[0].date}</span>
-        <span>{points[points.length - 1].date}</span>
+      <div className="mt-2 flex gap-1 text-[10px] font-semibold text-neutral-500">
+        {points.map((p) => (
+          <div key={p.date} className="flex-1 text-center" title={p.date}>
+            {p.date.slice(8, 10)}
+          </div>
+        ))}
       </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white/80 p-4 shadow-sm backdrop-blur">
+      <div className="text-xs font-semibold text-neutral-500">{label}</div>
+      <div className="mt-1 text-lg font-semibold text-neutral-900">{value}</div>
+    </div>
+  );
+}
+
+function StatSkeleton() {
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white/60 p-4 shadow-sm backdrop-blur">
+      <div className="h-3 w-20 animate-pulse rounded bg-neutral-200" />
+      <div className="mt-3 h-6 w-28 animate-pulse rounded bg-neutral-200" />
     </div>
   );
 }

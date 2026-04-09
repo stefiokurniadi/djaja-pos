@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { MobileUserMenu } from "@/components/MobileUserMenu";
+import { t } from "@/lib/i18n";
 
 type Branch = { id: string; name: string };
 type UserRow = {
@@ -25,6 +26,7 @@ export default function IamPage() {
   const qc = useQueryClient();
   const { data: session } = useSession();
   const isOwner = session?.user?.role === "OWNER";
+  const locale = session?.user?.locale;
 
   const branchesQ = useQuery({
     queryKey: ["branches"],
@@ -76,7 +78,9 @@ export default function IamPage() {
   return (
     <AppShell>
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold tracking-tight">Owner / IAM</h1>
+        <h1 className="text-xl font-semibold tracking-tight">
+          {t(locale, "settings.iam")}
+        </h1>
         <div className="flex items-center gap-2">
           <div className="text-xs text-neutral-500">
             Branches • Admins • Cashiers
@@ -108,9 +112,9 @@ export default function IamPage() {
                 try {
                   await createBranch.mutateAsync({ name: newBranchName.trim() });
                   setNewBranchName("");
-                  toast.push("Branch created");
+                  toast.push(t(locale, "iam.branchCreated"));
                 } catch {
-                  toast.push("Failed to create branch (OWNER only)");
+                  toast.push(t(locale, "iam.branchCreateFailed"));
                 }
               }}
             >
@@ -330,14 +334,14 @@ export default function IamPage() {
                     branchId: ""
                   });
                   setNewUserPassword2("");
-                  toast.push("User created");
+                  toast.push(t(locale, "iam.userCreated"));
                 } catch (e) {
                   const msg =
                     e instanceof Error && e.message
                       ? e.message
                       : "Failed to create user";
                   setCreateUserError(msg);
-                  toast.push("Failed to create user");
+                  toast.push(t(locale, "iam.userCreateFailed"));
                 }
               }}
             >
@@ -451,10 +455,10 @@ function UserCard({
                 const text = await res.text().catch(() => "");
                 throw new Error(text || "Delete failed");
               }
-              toast.push("User deleted");
+              toast.push(t(locale, "iam.userDeleted"));
               await qc.invalidateQueries({ queryKey: ["users"] });
             } catch (e) {
-              toast.push("Failed to delete user");
+              toast.push(t(locale, "iam.userDeleteFailed"));
             } finally {
               setBusy(false);
               setConfirmingDelete(false);
@@ -475,7 +479,7 @@ function UserCard({
                 style={{ minHeight: 44 }}
                 onClick={() => setEditing(false)}
               >
-                Close
+                {t(locale, "common.close")}
               </button>
             </div>
 
@@ -591,24 +595,24 @@ function UserCard({
                         const text = await res.text().catch(() => "");
                         throw new Error(text || "Update failed");
                       }
-                      toast.push("User updated");
+                      toast.push(t(locale, "iam.userUpdated"));
                       await onChanged();
                       setEditing(false);
                     } catch {
-                      toast.push("Failed to update user");
+                      toast.push(t(locale, "iam.userUpdateFailed"));
                     } finally {
                       setBusy(false);
                     }
                   }}
                 >
-                  Save changes
+                  {t(locale, "common.save")}
                 </button>
                 <button
                   className="rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold"
                   style={{ minHeight: 44 }}
                   onClick={() => setEditing(false)}
                 >
-                  Cancel
+                  {t(locale, "common.cancel")}
                 </button>
               </div>
             </div>
@@ -658,7 +662,7 @@ function BranchRow({
                 setName(branch.name);
               }}
             >
-              Cancel
+              {t(locale, "common.cancel")}
             </button>
             <button
               className="rounded-xl bg-neutral-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
@@ -674,17 +678,17 @@ function BranchRow({
                     body: JSON.stringify({ name: name.trim() })
                   });
                   if (!res.ok) throw new Error();
-                  toast.push("Branch updated");
+                  toast.push(t(locale, "iam.branchUpdated"));
                   await onChanged();
                   setEditing(false);
                 } catch {
-                  toast.push("Failed to update branch");
+                  toast.push(t(locale, "iam.branchUpdateFailed"));
                 } finally {
                   setBusy(false);
                 }
               }}
             >
-              Save
+              {t(locale, "common.save")}
             </button>
           </>
         ) : (
@@ -708,10 +712,10 @@ function BranchRow({
                     credentials: "include"
                   });
                   if (!res.ok) throw new Error();
-                  toast.push("Branch deleted");
+                  toast.push(t(locale, "iam.branchDeleted"));
                   await onChanged();
                 } catch {
-                  toast.push("Failed to delete branch");
+                  toast.push(t(locale, "iam.branchDeleteFailed"));
                 } finally {
                   setBusy(false);
                 }

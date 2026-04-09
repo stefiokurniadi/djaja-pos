@@ -38,8 +38,9 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md items-center p-4">
-      <div className="w-full rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+    <main className="min-h-dvh bg-neutral-50 p-4">
+      <div className="mx-auto flex max-w-md items-center">
+        <div className="w-full rounded-2xl border border-neutral-200 bg-white/80 p-5 shadow-sm backdrop-blur">
         <div className="flex justify-center">
           <Image
             src="/brand/logo.png"
@@ -88,13 +89,14 @@ export default function SignInPage() {
 
           <button
             type="submit"
-            className="mt-4 w-full rounded-xl bg-neutral-900 px-4 py-3 text-base font-medium text-white disabled:opacity-60"
+            className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-base font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-60"
             style={{ minHeight: 44 }}
             disabled={loading}
           >
             Continue
           </button>
         </form>
+      </div>
       </div>
     </main>
   );

@@ -2,7 +2,57 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { jsonError } from "@/lib/http";
-import { requireSession } from "@/lib/rbac";
+import { requireRole, requireSession } from "@/lib/rbac";
+
+function parseDateParam(v: string | null) {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+export async function GET(req: Request) {
+  try {
+    const session = await requireSession();
+    requireRole(session.user.role, ["OWNER", "ADMIN"]);
+    if (!session.user.companyId) return jsonError(400, "Missing company");
+
+    const url = new URL(req.url);
+    const branchId = url.searchParams.get("branchId") || undefined;
+    const from = parseDateParam(url.searchParams.get("from"));
+    const to = parseDateParam(url.searchParams.get("to"));
+
+    if (branchId) {
+      const b = await prisma.branch.findFirst({
+        where: { id: branchId, companyId: session.user.companyId }
+      });
+      if (!b) return jsonError(400, "Invalid branch");
+    }
+
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        status: "COMPLETED",
+        branch: { companyId: session.user.companyId },
+        ...(branchId ? { branchId } : {}),
+        ...(from || to
+          ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } }
+          : {})
+      },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      include: {
+        branch: { select: { id: true, name: true } },
+        items: true
+      }
+    });
+
+    return Response.json({ transactions });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "UNKNOWN";
+    if (msg === "UNAUTHORIZED") return jsonError(401, "Unauthorized");
+    if (msg === "FORBIDDEN") return jsonError(403, "Forbidden");
+    return jsonError(500, "Failed to fetch transactions");
+  }
+}
 
 const CreateTransactionSchema = z.object({
   paymentMethod: z.enum(["CASH", "DIGITAL"]),
@@ -14,25 +64,32 @@ const CreateTransactionSchema = z.object({
       })
     )
     .min(1),
-  receivedAmount: z.coerce.number().nonnegative().optional()
+  receivedAmount: z.coerce.number().nonnegative().optional(),
+  branchId: z.string().min(1).optional()
 });
 
 export async function POST(req: Request) {
   try {
     const session = await requireSession();
-    if (!session.user.branchId) return jsonError(400, "Missing branch");
+    if (!session.user.companyId) return jsonError(400, "Missing company");
 
     const body = await req.json();
     const input = CreateTransactionSchema.parse(body);
 
-    // Enforce branch scoping: only allow products from cashier's branch unless OWNER.
-    const isOwner = session.user.role === "OWNER";
+    const branchId =
+      session.user.role === "CASHIER" ? session.user.branchId : input.branchId;
+    if (!branchId) return jsonError(400, "Branch is required");
+
+    const branch = await prisma.branch.findFirst({
+      where: { id: branchId, companyId: session.user.companyId }
+    });
+    if (!branch) return jsonError(400, "Invalid branch");
     const productIds = input.items.map((i) => i.productId);
 
     const products = await prisma.product.findMany({
       where: {
         id: { in: productIds },
-        ...(isOwner ? {} : { branchId: session.user.branchId })
+        branchId
       },
       select: {
         id: true,
@@ -65,7 +122,7 @@ export async function POST(req: Request) {
     const created = await prisma.$transaction(async (tx) => {
       const createdTx = await tx.transaction.create({
         data: {
-          branchId: session.user.branchId!,
+          branchId,
           cashierUserId: session.user.id,
           paymentMethod: input.paymentMethod,
           subtotal: new Prisma.Decimal(0),

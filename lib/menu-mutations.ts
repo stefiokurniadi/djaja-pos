@@ -68,6 +68,7 @@ export function useCreateProduct() {
       price: number;
       costPrice: number;
       isActive?: boolean;
+      branchId?: string;
     }) => apiPost<{ product: unknown }>("/api/products", input),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["products"] });

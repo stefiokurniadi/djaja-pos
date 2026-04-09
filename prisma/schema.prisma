@@ -27,6 +27,11 @@ enum TransactionStatus {
   VOIDED
 }
 
+enum TransactionLogAction {
+  EDIT
+  SOFT_DELETE
+}
+
 model Company {
   id        String   @id @default(cuid())
   name      String
@@ -79,6 +84,7 @@ model User {
   accounts     Account[]
   sessions     Session[]
   transactions Transaction[]
+  transactionLogs TransactionLog[] @relation("TransactionLogActor")
 
   @@index([companyId])
   @@index([branchId])
@@ -151,10 +157,27 @@ model Transaction {
   branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
   cashier User  @relation(fields: [cashierUserId], references: [id], onDelete: Restrict)
   items   TransactionItem[]
+  logs    TransactionLog[]
 
   @@index([branchId, createdAt])
   @@index([cashierUserId, createdAt])
   @@index([status, createdAt])
+}
+
+model TransactionLog {
+  id            String             @id @default(cuid())
+  transactionId String
+  actorUserId   String
+  action        TransactionLogAction
+  before        Json?
+  after         Json?
+  createdAt     DateTime           @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  actor       User        @relation("TransactionLogActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([transactionId, createdAt])
+  @@index([actorUserId, createdAt])
 }
 
 /// Line items snapshot unitPrice/unitCost for accurate historical profit:
