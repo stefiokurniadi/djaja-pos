@@ -1,7 +1,7 @@
-import { PrismaClient, Role } from "@prisma/client";
+import "dotenv/config";
+import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
-
-const prisma = new PrismaClient();
+import { prisma } from "../lib/db";
 
 /** Stable IDs so `prisma db seed` is idempotent. */
 const SEED_COMPANY_ID = "seed-default-company";
