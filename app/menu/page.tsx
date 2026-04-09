@@ -117,7 +117,7 @@ export default function MenuPage() {
           {session?.user?.role !== "CASHIER" ? (
             <>
               <select
-                className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold"
+                className="rounded-xl border border-neutral-200 bg-white px-3 py-2 pr-10 text-sm font-semibold"
                 style={{ minHeight: 44 }}
                 value={activeBranchId}
                 onChange={(e) => setActiveBranchId(e.target.value)}

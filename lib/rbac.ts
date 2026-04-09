@@ -24,7 +24,7 @@ export function branchScopeForRole(
     if (!userBranchId) throw new Error("NO_BRANCH");
     return { branchId: userBranchId };
   }
-  // OWNER/ADMIN are not branch-dependent
+  // OWNER/ADMIN/SUPERADMIN are not branch-dependent
   return {};
 }
 

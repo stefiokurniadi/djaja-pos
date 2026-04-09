@@ -8,6 +8,7 @@ import Image from "next/image";
 export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,19 +78,29 @@ export default function SignInPage() {
           />
 
           <label className="mt-3 block text-sm font-medium">Password</label>
-          <input
-            className="mt-2 w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-3 text-base outline-none placeholder:text-neutral-400 focus:border-neutral-900 focus:bg-white"
-            style={{ minHeight: 44 }}
-            type="password"
-            autoComplete="current-password"
-            placeholder="password123"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <div className="relative mt-2">
+            <input
+              className="w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-3 pr-12 text-base outline-none placeholder:text-neutral-400 focus:border-neutral-900 focus:bg-white"
+              style={{ minHeight: 44 }}
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder="password123"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border border-neutral-200 bg-white px-2 py-1 text-xs font-semibold"
+              style={{ minHeight: 32 }}
+              onClick={() => setShowPassword((v) => !v)}
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
 
           <button
             type="submit"
-            className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-base font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-60"
+            className="mt-4 w-full rounded-xl bg-[#469d98] px-4 py-3 text-base font-semibold text-white shadow-sm hover:bg-[#3f8f8a] disabled:opacity-60"
             style={{ minHeight: 44 }}
             disabled={loading}
           >

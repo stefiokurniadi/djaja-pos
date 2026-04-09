@@ -18,9 +18,13 @@ export function BottomNav() {
   const role = data?.user?.role;
   const locale = data?.user?.locale;
   const visibleItems =
-    role === "CASHIER"
-      ? items.filter((i) => i.href !== "/menu")
-      : items;
+    role === "SUPERADMIN"
+      ? []
+      : role === "CASHIER"
+        ? items.filter((i) => i.href !== "/menu")
+        : items;
+
+  if (visibleItems.length === 0) return null;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/70 md:hidden">

@@ -7,6 +7,7 @@ export type I18nKey =
   | "nav.menu"
   | "nav.dashboard"
   | "nav.transactions"
+  | "nav.attendance"
   | "cart.title"
   | "cart.empty"
   | "pos.payCash"
@@ -63,6 +64,7 @@ const dict: Record<Locale, Record<I18nKey, string>> = {
     "nav.menu": "Menu",
     "nav.dashboard": "Dasbor",
     "nav.transactions": "Transaksi",
+    "nav.attendance": "Kehadiran",
     "cart.title": "Keranjang",
     "cart.empty": "Ketuk item untuk menambahkan.",
     "pos.payCash": "Bayar Tunai",
@@ -118,6 +120,7 @@ const dict: Record<Locale, Record<I18nKey, string>> = {
     "nav.menu": "Menu",
     "nav.dashboard": "Dashboard",
     "nav.transactions": "Transaction List",
+    "nav.attendance": "Attendance",
     "cart.title": "Cart",
     "cart.empty": "Tap an item to add it.",
     "pos.payCash": "Pay with Cash",

@@ -10,6 +10,7 @@ import { t } from "@/lib/i18n";
 
 const navItems = [
   { href: "/pos", labelKey: "nav.cashier" as const },
+  { href: "/attendance", labelKey: "nav.attendance" as const },
   { href: "/menu", labelKey: "nav.menu" as const },
   { href: "/dashboard", labelKey: "nav.dashboard" as const },
   { href: "/transactions", labelKey: "nav.transactions" as const }
@@ -24,6 +25,8 @@ export function Sidebar() {
   const email = data?.user?.email ?? "—";
   const role = data?.user?.role ?? "—";
   const isCashier = role === "CASHIER";
+  const isSuperAdmin =
+    role === "SUPERADMIN" || (data?.user?.email ?? "").toLowerCase() === "superadmin@djajapos.com";
   const locale = data?.user?.locale;
 
   useEffect(() => {
@@ -39,7 +42,7 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex md:h-dvh md:w-64 md:flex-col md:border-r md:border-neutral-200 md:p-4">
       <div className="flex items-center justify-between">
-        <Link href="/pos" className="flex items-center gap-2">
+        <Link href={isSuperAdmin ? "/superadmin" : "/pos"} className="flex items-center gap-2">
           <Image
             src="/brand/logo.png"
             alt="DjajaPOS"
@@ -52,9 +55,11 @@ export function Sidebar() {
       </div>
 
       <nav className="mt-4 space-y-1">
-        {(isCashier
-          ? navItems.filter((n) => n.href !== "/menu" && n.href !== "/transactions")
-          : navItems
+        {(isSuperAdmin
+          ? [{ href: "/superadmin", labelKey: "nav.dashboard" as const }]
+          : isCashier
+            ? navItems.filter((n) => n.href !== "/menu" && n.href !== "/transactions")
+            : navItems
         ).map((it) => {
           const active = pathname === it.href;
           return (
@@ -69,7 +74,7 @@ export function Sidebar() {
                   : "text-neutral-700 hover:bg-neutral-50"
               )}
             >
-              <span>{t(locale, it.labelKey)}</span>
+              <span>{isSuperAdmin ? "Super Admin" : t(locale, it.labelKey)}</span>
             </Link>
           );
         })}
@@ -92,7 +97,7 @@ export function Sidebar() {
           </button>
           {open ? (
             <div className="absolute bottom-[52px] left-0 w-full overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg">
-              {!isCashier ? (
+              {!isCashier && !isSuperAdmin ? (
                 <Link
                   href="/iam"
                   className="block px-3 py-3 text-sm font-semibold text-neutral-900 hover:bg-neutral-50"

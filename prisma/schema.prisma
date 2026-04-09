@@ -10,6 +10,7 @@ enum Role {
   OWNER
   ADMIN
   CASHIER
+  SUPERADMIN
 }
 
 enum Locale {
@@ -41,6 +42,7 @@ model Company {
   branches Branch[]
   categories Category[]
   users    User[]
+  attendances Attendance[]
 
   @@index([name])
 }
@@ -56,6 +58,7 @@ model Branch {
   cashierUsers User[]        @relation("CashierBranch")
   products     Product[]
   transactions Transaction[]
+  attendances  Attendance[]
 
   @@index([name])
   @@index([companyId])
@@ -85,10 +88,40 @@ model User {
   sessions     Session[]
   transactions Transaction[]
   transactionLogs TransactionLog[] @relation("TransactionLogActor")
+  attendances  Attendance[]
 
   @@index([companyId])
   @@index([branchId])
   @@index([role])
+}
+
+model Attendance {
+  id String @id @default(cuid())
+
+  companyId String
+  branchId  String?
+  userId    String
+
+  checkInAt   DateTime
+  checkInLat  Float?
+  checkInLng  Float?
+  checkInPhoto String
+
+  checkOutAt   DateTime?
+  checkOutLat  Float?
+  checkOutLng  Float?
+  checkOutPhoto String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch  Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, checkInAt])
+  @@index([userId, checkInAt])
+  @@index([branchId, checkInAt])
 }
 
 // Enforce "one cashier account for one branch" by convention in code:

@@ -114,7 +114,7 @@ export default function SignUpPage() {
         />
 
         <button
-          className="mt-4 w-full rounded-xl bg-neutral-900 px-4 py-3 text-base font-semibold text-white disabled:opacity-60"
+          className="mt-4 w-full rounded-xl bg-[#469d98] px-4 py-3 text-base font-semibold text-white hover:bg-[#3f8f8a] disabled:opacity-60"
           style={{ minHeight: 44 }}
           disabled={loading || password.length < 8 || password2 !== password}
           onClick={async () => {

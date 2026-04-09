@@ -37,6 +37,18 @@ export async function middleware(req: NextRequest) {
   }
 
   const role = token.role as string | undefined;
+  const email = (token as any)?.email as string | undefined;
+  const isSuperAdmin = role === "SUPERADMIN" || email === "superadmin@djajapos.com";
+
+  // SUPERADMIN: isolate to /superadmin only
+  if (isSuperAdmin) {
+    if (!pathname.startsWith("/superadmin")) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/superadmin";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
 
   // Cashier restrictions
   if (role === "CASHIER") {

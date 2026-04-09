@@ -115,7 +115,7 @@ export default function PosPage() {
         <div className="flex items-center gap-2">
           {session?.user?.role !== "CASHIER" ? (
             <select
-              className="hidden rounded-xl border border-neutral-200 bg-white/80 px-3 py-2 text-sm font-semibold text-neutral-900 shadow-sm backdrop-blur md:block"
+              className="hidden rounded-xl border border-neutral-200 bg-white/80 px-3 py-2 pr-10 text-sm font-semibold text-neutral-900 shadow-sm backdrop-blur md:block"
               style={{ minHeight: 44 }}
               value={activeBranchId}
               onChange={(e) => setActiveBranchId(e.target.value)}
